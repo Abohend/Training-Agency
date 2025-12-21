@@ -44,6 +44,10 @@ namespace MVC.Controllers
         public async Task<IActionResult> index()
         {
             ApplicationUser? user = await GetCurrentUserAsync();
+            if (user == null)
+            {
+                RedirectToAction(nameof(Register));
+            }
             UserMV userMV = MapUser(user);
             if (User.IsInRole("Trainee"))
             {

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using MVC.Data;
 using MVC.Models;
+using MVC.Options;
 using MVC.Repositories;
 
 namespace MVC
@@ -18,9 +20,9 @@ namespace MVC
 			   2. Built in needed to be loaded in the IOC container. ex AddSession
 			   3. Custom services ex AddScoped */
 			//! There are 3 ways to load a service:
-			/* 1. AddScoped(): create a object for each request.
-			   2. AddTrainsiant(): create an object for each injection.
-			   3. AddSingelton(): create an object for different requests and clients.*/
+			/* 1. AddScoped(): create a object for each http request.
+			   2. AddTransient(): create an object for each injection.
+			   3. AddSingelton(): create a single object for different requests and clients.*/
 
 			// Add services to the container.
 			builder.Services.AddDbContext<Db>(optionBuiler =>
@@ -34,7 +36,6 @@ namespace MVC
 					options.User.RequireUniqueEmail = true;
 				})
 				.AddUserManager<UserManager<ApplicationUser>>()
-				//.AddUserManager<UserManager<Instructor>>()
 				.AddEntityFrameworkStores<Db>();
 			builder.Services.AddControllersWithViews();
 			builder.Services.AddSession(); // default time is 20min from unuse
@@ -43,73 +44,34 @@ namespace MVC
 			builder.Services.AddScoped<ITraineeRepository, TraineeRepository>();
 			builder.Services.AddScoped<IInstructorRepository, InstructorRepository>();
 			builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+			//builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.SectionName));
+			builder.Services.AddOptions<AdminOptions>()
+				.Bind(builder.Configuration.GetSection(AdminOptions.SectionName))
+				.Validate(a => a.Email.Contains('@'), "Email is not valid.")
+				.Validate(a => a.Password.Any(char.IsUpper) &&
+					a.Password.Any(char.IsLower) &&
+					a.Password.Any(char.IsDigit), "Password must have at least one lower, one upper, and one char")
+				.ValidateOnStart();
+			builder.Services.AddScoped<DataSeeder>();
 			#endregion
 			
 			var app = builder.Build();
 
-            #region Seed Roles & Default Admin
-            using (var scope = app.Services.CreateScope())
-            {
-                var roleManager =
-                    scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
-
-                string[] roles = { "Admin", "Trainee", "Instructor" };
-                foreach (var role in roles)
-                {
-                    if (!await roleManager.RoleExistsAsync(role))
-                    {
-                        await roleManager.CreateAsync(new IdentityRole<int>(role));
-                    }
-                }
-
-                var userManager =
-                    scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-                var configuration =
-                    scope.ServiceProvider.GetRequiredService<IConfiguration>();
-
-				string email = configuration["Admin:email"]!;
-				string password = configuration["Admin:password"]!;
-
-				if (await userManager.FindByEmailAsync(email) == null)
-                {
-                    ApplicationUser user = new();
-                    user.Email = email;
-                    user.UserName = email;
-                    await userManager.CreateAsync(user, password);
-                    await userManager.AddToRoleAsync(user, "Admin");
-                }
-            }
-
+			// seed data
 			using (var scope = app.Services.CreateScope())
 			{
-                
-            }
-            #endregion
+				var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
+				await seeder.SeedAsync();
+			}
 
-            #region custom middelwares
-            //app.Use(async (httpContext, next) =>
-            //{
-            //	await httpContext.Response.WriteAsync("1) MW 1\n");
-            //	await next.Invoke();
-            //             await httpContext.Response.WriteAsync("3) MW 1\n");
-
-            //         });
-            //app.Run(async (httpContext) =>
-            //{
-            //	await httpContext.Response.WriteAsync("2) teraminate\n");
-            //});
-            #endregion
-
-            #region middlewares
-            // use => execute and pass to next, execute request and terminate, map => map url to execute
-
-            // Configure the HTTP request pipeline.
-            if (!app.Environment.IsDevelopment())
-				{
-					app.UseExceptionHandler("/Home/Error");
-					// The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-					app.UseHsts();
-				}
+			#region middlewares
+			// Configure the HTTP request pipeline.
+			if (!app.Environment.IsDevelopment())
+			{
+				app.UseExceptionHandler("/Home/Error");
+				// The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+				app.UseHsts();
+			}
 
 			app.UseHttpsRedirection();
 			app.UseStaticFiles();
