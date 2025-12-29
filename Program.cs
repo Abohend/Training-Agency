@@ -4,6 +4,7 @@ using MVC.Data;
 using MVC.Models;
 using MVC.Options;
 using MVC.Repositories;
+using Serilog;
 
 namespace MVC
 {
@@ -54,6 +55,13 @@ namespace MVC
 				.ValidateOnStart();
 			builder.Services.AddScoped<DataSeeder>();
 			#endregion
+
+			builder.Host.UseSerilog((context, config) =>
+			{
+				config.ReadFrom.Configuration(context.Configuration)
+				.WriteTo.Console()
+				.WriteTo.File("logs/app-.log", rollingInterval: RollingInterval.Day);
+			});
 			
 			var app = builder.Build();
 

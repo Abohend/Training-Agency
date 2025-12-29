@@ -11,14 +11,19 @@ namespace MVC.Controllers
     public class AccountController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> signInManager;
-        private readonly IDepartmentRepository departmentRepository;
+        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IDepartmentRepository _departmentRepository;
+        private readonly ILogger<AccountController> _logger;
 
-        public AccountController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IDepartmentRepository departmentRepository)
+        public AccountController(UserManager<ApplicationUser> userManager, 
+            SignInManager<ApplicationUser> signInManager, 
+            IDepartmentRepository departmentRepository,
+            ILogger<AccountController> logger)
         {
-            _userManager = userManager;
-            this.signInManager = signInManager;
-            this.departmentRepository = departmentRepository;
+            this._userManager = userManager;
+            this._signInManager = signInManager;
+            this._departmentRepository = departmentRepository;
+            this._logger = logger;
         }
 
         #region Helpers
@@ -94,7 +99,7 @@ namespace MVC.Controllers
         [HttpGet]
         public IActionResult Register()
         {
-            ViewBag.deps = departmentRepository.GetDepartmentsSLI();
+            ViewBag.deps = _departmentRepository.GetDepartmentsSLI();
             return View();
         }
 
@@ -115,13 +120,18 @@ namespace MVC.Controllers
                     //add rule
                     await _userManager.AddToRoleAsync(newTrainee, "Trainee");
                     // Save cookie
-                    await signInManager.SignInAsync(newTrainee, true);
+                    await _signInManager.SignInAsync(newTrainee, true);
+                    
+                    _logger.LogInformation("{User} has logged in successfully.", newTrainee);
                     return RedirectToAction("index"); 
                 }
                 else
                 {
                     foreach (var errorItem in result.Errors)
                     {
+                        _logger.LogInformation("Error registering user {User}", newTrainee);
+                        _logger.LogInformation("Errors: {Errors} ", result.Errors);
+
                         ModelState.AddModelError("Summary", errorItem.Description);
                     }
                 }
@@ -155,12 +165,16 @@ namespace MVC.Controllers
                 if (result)
                 {
                     // create cookie
-                    await signInManager.SignInAsync(user, true);
+                    await _signInManager.SignInAsync(user, true);
+                    // log 
+                    _logger.LogInformation("Success login attempt for {User}", user);
                     return RedirectToAction("Index"); 
                 }
             }
             // append error to ModelState
             ModelState.AddModelError("Summary", "Invalid Email or Password");
+            // log
+            _logger.LogInformation("Failed Login attempt for {User}", user);
             return View(loginVM);
         }
 
@@ -169,7 +183,7 @@ namespace MVC.Controllers
         #region Logout
         public async Task<IActionResult> Logout()
         {
-            await signInManager.SignOutAsync();
+            await _signInManager.SignOutAsync();
             return RedirectToAction("login");
         }
         #endregion
