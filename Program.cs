@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MVC.Data;
+using MVC.Middlewares;
 using MVC.Models;
 using MVC.Options;
 using MVC.Repositories;
@@ -82,6 +83,7 @@ namespace MVC
 			}
 
 			app.UseHttpsRedirection();
+			app.UseMiddleware<RequestTimingMiddleware>();
 			app.UseStaticFiles();
 
 			app.UseRouting();
