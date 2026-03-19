@@ -56,20 +56,6 @@ Implementations are EF Core-based and registered in `Program.cs` with `AddScoped
 - `DepartmentController` (Admin-only): CRUD + details
 - `CourseController` (Admin-only): CRUD + AJAX validation helper (`lessThanDegree`)
 
-## Known Issues / Notes
-- `Controllers/TraineeController.cs` is currently empty, but `Views/Trainee/*` exist.
-- Some role naming references use `Trainee`, while role seeding creates `Student`. Align these if you see auth/navigation issues.
-- `Models/DBContext.cs` contains a hardcoded SQL connection string in `OnConfiguring`; `Program.cs` also configures `Db` via `ConnectionStrings:DB`.
-
-# Training-Agency (ASP.NET Core MVC)
-
-This project is an ASP.NET Core MVC application that uses:
-- ASP.NET Core Identity for authentication/authorization
-- Entity Framework Core + SQL Server for data access
-- A repository pattern (interfaces + EF implementations registered in DI)
-- The Options pattern for strongly-typed configuration (default admin seeding)
-- Custom middleware for request timing logging
-
 ---
 
 ## Project Structure
@@ -328,12 +314,4 @@ It validates that the course name is unique inside the same department.
 
 Implementation note:
 - it currently instantiates `Db` directly inside the validator rather than using a repository.
-
----
-
-## Notes / Known Issues to Revisit
-- `DataSeeder` seeds `Student`, but controllers appear to use `Trainee`.
-- `DbContext.OnConfiguring` hardcodes a SQL connection string, while `Program.cs` uses `ConnectionStrings:DB`.
-- `Controllers/TraineeController.cs` is currently empty.
-- `Views/Shared/_NavPartial.cshtml` expects `TraineeController.GetResults`, while `Views/Trainee/Edit.cshtml` links to `TraineeController.Results`.
 
